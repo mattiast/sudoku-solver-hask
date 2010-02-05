@@ -10,7 +10,7 @@ profile: src/sudoku.hs src/heuristic.hs blength.o
 blength.o: src/blength.c
 	gcc -c src/blength.c -o blength.o
 clean:
-	rm -f sudoku.hi sudoku.o blength.o heuristic.o heuristic.hi sudoku prof_sud*
+	rm -f blength.o sudoku prof_sud* src/*.hi src/*.o
 test: sudoku
 	echo time > times.dat
 	@for i in samples/garden/* ;\
