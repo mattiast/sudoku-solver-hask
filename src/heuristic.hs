@@ -3,6 +3,7 @@ import Sudoku
 import List
 import Data.Tree
 import Data.Bits
+import Data.List
 import Control.Arrow
 import Data.Array.Unboxed
 import Text.XML.HaXml hiding ((!))
@@ -22,10 +23,7 @@ generateTree = unfoldTree ((id &&& guesses) . mahisSaturate) where
 			      [ m // [(sq, v)] | v <- mahikset ]
 
 treeSize (Node _ sf) = 1 + sum (map treeSize sf)
-treeDepth (Node _ sf) = 1 + foldl max 0 (map treeDepth sf)
-
-foldTree :: (a -> [b] -> b) -> Tree a -> b
-foldTree f (Node a sf) = f a (map (foldTree f) sf)
+treeDepth (Node _ sf) = 1 + foldl' max 0 (map treeDepth sf)
 
 renderHtml :: Mahis -> Int -> Int -> [Content i]
 renderHtml m s d = cat [mkElemAttr "table"
