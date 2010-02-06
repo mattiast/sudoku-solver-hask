@@ -43,9 +43,9 @@ main = do
 	    sols = filter (\m -> mahisNotRR m && mahisSum m == 81) $ concat $ levels t
 	case sols of
 		[] -> putStr "EI RATKAISUJA"
-		[m] -> putStr $ 
-                       (renderStyle (style{mode = OneLineMode}) . htmlprint) $ 
-                       renderHtml m (treeSize t) (treeDepth t)
+		[m] -> putStr $ mahisRender m
+--                       (renderStyle (style{mode = OneLineMode}) . htmlprint) $ 
+--                       renderHtml m (treeSize t) (treeDepth t)
 		ms -> do 
 			putStr "USEITA RATKAISUJA"
 
