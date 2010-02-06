@@ -60,20 +60,20 @@ type Mahis = UArray Square Int16
 
 --kmoukari :: Int -> Mahis -> Mahis
 kmoukari k mah = runSTUArray $ do
-	ma <- thaw mah
-	sequence_ [ eliminate ma ns | ns <- nakedSubsets mah ]
-	return ma
-	where
-	-- En keksinyt tätä nimeä itse, vaan kyseessä on 
-	-- "naked pair"-menetelmän yleistys kaikkiin osajoukkoihin.
-	nakedSubsets :: Mahis -> [([Square],[Square],Int16)]
-	nakedSubsets m = {-# SCC "nakedSubsets" #-} do 
-		 u <- unitlist
-		 s <- ksublists k u
-		 let l = {-# SCC "or_fold" #-} foldr1 (.|.) (map (m!) s)
-		 True <- return $ (blength l == k) && l /= 0 && l /= 1022
-                 return (u,s,l)
-	eliminate ma (u,s,l) = {-# SCC "eliminate" #-}
+    ma <- thaw mah
+    sequence_ [ eliminate ma ns | ns <- nakedSubsets mah ]
+    return ma
+    where
+    -- En keksinyt tätä nimeä itse, vaan kyseessä on 
+    -- "naked pair"-menetelmän yleistys kaikkiin osajoukkoihin.
+    nakedSubsets :: Mahis -> [([Square],[Square],Int16)]
+    nakedSubsets m = {-# SCC "nakedSubsets" #-} do 
+         u <- unitlist
+         s <- ksublists k u
+         let l = {-# SCC "or_fold" #-} foldr1 (.|.) (map (m!) s)
+         True <- return $ (blength l == k) && l /= 0 && l /= 1022
+         return (u,s,l)
+    eliminate ma (u,s,l) = {-# SCC "eliminate" #-}
 			       sequence_ [ upd sq ma (.&. complement l) | sq <- u \\ s ] where
 					 upd s m f = do {v <- readArray m s; writeArray m s (f v)}
 
@@ -99,7 +99,8 @@ mahisRender m = do
 	    str _   = show 0
 	str pj ++ (if snd s == 'i' then "\n" else "")
 
-mahisSum m = foldl' (\x y -> x + blength y) 0 (elems m)
+mahisSum :: Mahis -> Int16
+mahisSum = sum . map blength . elems
 
 mahisNotRR   :: Mahis -> Bool
 mahisNotRR m = foldl (\x y -> x && (y /= 0)) True (elems m)
