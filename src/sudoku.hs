@@ -23,13 +23,6 @@ sublists (x:xs) = map (x:) (sublists xs) ++ sublists xs
 ksublists 0 _ = [[]]
 ksublists k [] = []
 ksublists k (x:xs) = map (x:) (ksublists (k-1) xs) ++ ksublists k xs
---ksublist 0 0 n xs = []
---ksublist l k n (x:xs) | l < comb (n-1) (k-1) = x : ksublist l (k-1) (n-1) xs
---ksublist l k n (x:xs) = ksublist (l - comb (n-1) (k-1)) k (n-1) xs
---ksublists k xs = [ ksublist l k n xs | l <- [0..comb n k-1] ] where n = genericLength xs
---
---comb n 0 = 1
---comb n k = div ((n-k+1)*comb n (k-1)) k
 
 -- kertoo, montako ykköstä luvun binääriesityksessä
 foreign import ccall unsafe "blength.h blength" c_blength :: CUInt -> CUInt
@@ -59,28 +52,33 @@ peers s = filter (/=s) $ nub $ concat $ units s
 type Mahis = UArray Square Int16
 
 --kmoukari :: Int -> Mahis -> Mahis
-kmoukari k mah = runSTUArray $ do
-    ma <- thaw mah
-    sequence_ [ eliminate ma ns | ns <- nakedSubsets mah ]
-    return ma
+kmoukari k ma = do
+    nss <- nakedSubsets
+    sequence_ [ eliminate ma ns | ns <- nss ]
     where
     -- En keksinyt tätä nimeä itse, vaan kyseessä on 
     -- "naked pair"-menetelmän yleistys kaikkiin osajoukkoihin.
-    nakedSubsets :: Mahis -> [([Square],[Square],Int16)]
-    nakedSubsets m = {-# SCC "nakedSubsets" #-} do 
-         u <- unitlist
-         s <- ksublists k u
-         let l = {-# SCC "or_fold" #-} foldr1 (.|.) (map (m!) s)
-         True <- return $ (blength l == k) && l /= 0 && l /= 1022
-         return (u,s,l)
+    nakedSubsets = fmap (filter (\(_,_,l) -> blength l == k && l /= 0 && l /= 1022)) $ 
+                    sequence [ l s u | u <- unitlist, s <- ksublists k u ]
+                  where l s u = {-# SCC "or_fold" #-} do 
+                                ls <- mapM (readArray ma) s
+                                let ll = foldr1 (.|.) ls
+                                return (u,s,ll)
+    eliminate :: STUArray s Square Int16 -> ([Square],[Square],Int16) -> ST s ()
     eliminate ma (u,s,l) = {-# SCC "eliminate" #-}
 			       sequence_ [ upd sq ma (.&. complement l) | sq <- u \\ s ] where
 					 upd s m f = do {v <- readArray m s; writeArray m s (f v)}
 
-moukari :: Mahis -> Maybe Mahis
-moukari mah = let ms = map (flip kmoukari mah) [1,8,2,7,3,6,4,5]
-              in find (\m ->mahisSum m < mahisSum mah) ms
-        
+moukari ma = do
+    s_old <- smahisSum ma
+    prog <- oper s_old ma [1,8,2,7,3,6,4,5] -- Tämä rivi teki ohjelmasta 10x nopeamman!
+    if prog then moukari ma else return ()
+    where
+        oper s_old ma [] = return False  -- no progress
+        oper s_old ma (k:ks) = do
+            kmoukari k ma
+            s_new <- smahisSum ma
+            if s_old == s_new then oper s_old ma ks else return True
 
 mahisParse :: String -> Mahis
 mahisParse string =  array ((1,'a'),(9,'i')) $ do
@@ -99,6 +97,10 @@ mahisRender m = do
 	    str _   = show 0
 	str pj ++ (if snd s == 'i' then "\n" else "")
 
+smahisSum ma = do
+    es <- getElems ma
+    return $ sum [ blength x | x <- es ]
+
 mahisSum :: Mahis -> Int16
 mahisSum = sum . map blength . elems
 
@@ -106,6 +108,7 @@ mahisNotRR   :: Mahis -> Bool
 mahisNotRR m = foldl (\x y -> x && (y /= 0)) True (elems m)
 
 mahisSaturate :: Mahis -> Mahis
-mahisSaturate m = case moukari m of
-                    Just m' -> mahisSaturate m'
-                    Nothing -> m
+mahisSaturate mah = runSTUArray $ do
+    ma <- thaw mah
+    moukari ma
+    return ma
