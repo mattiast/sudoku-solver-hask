@@ -6,4 +6,4 @@ main = do
 	mah <- return . mahisSaturate . mahisParse =<< getContents
 	if mahisNotRR mah
 		then putStr $ mahisRender mah
-		else putStr "RISTIRIITAINEN ASETELMA" 
+		else putStr "CONTRADICTORY" 

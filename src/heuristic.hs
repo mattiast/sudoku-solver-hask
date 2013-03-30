@@ -1,6 +1,5 @@
 module Main where
 import Sudoku
-import List
 import Data.Tree
 import Data.Bits
 import Data.List
@@ -42,10 +41,10 @@ main = do
 	let t = generateTree mah
 	    sols = filter (\m -> mahisNotRR m && mahisSum m == 81) $ concat $ levels t
 	case sols of
-		[] -> putStr "EI RATKAISUJA"
+		[] -> putStr "NO SOLUTIONS"
 		[m] -> putStr $ mahisRender m
 --                       (renderStyle (style{mode = OneLineMode}) . htmlprint) $ 
 --                       renderHtml m (treeSize t) (treeDepth t)
 		ms -> do 
-			putStr "USEITA RATKAISUJA"
+			putStr "SEVERAL SOLUTIONS"
 
