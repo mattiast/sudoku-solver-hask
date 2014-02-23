@@ -42,9 +42,6 @@ unitlist = map (map squareNumber) $ rows ++ columns ++ boxes
     columns = map (\x -> cross [1..9] [x] ) [1..9]
     boxes = liftM2 cross [[1..3],[4..6],[7..9]] [[1..3],[4..6],[7..9]]
 
-units s = filter (elem s) unitlist
-peers s = filter (/=s) $ nub $ concat $ units s
-
 -- Every square has a set of possible numbers
 -- encoded in the bits 1..9
 -- Other bits are zero.

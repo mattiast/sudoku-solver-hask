@@ -43,8 +43,6 @@ main = do
     case sols of
         [] -> putStr "NO SOLUTIONS"
         [m] -> putStr $ mahisRender m
---                       (renderStyle (style{mode = OneLineMode}) . htmlprint) $ 
---                       renderHtml m (treeSize t) (treeDepth t)
-        ms -> do 
+        _ -> do 
             putStr "SEVERAL SOLUTIONS"
 
