@@ -1,8 +1,9 @@
+{-# LANGUAGE PackageImports #-}
 module Sudoku where
 import Data.Char
 import Control.Monad
 import Control.Monad.ST
-import Control.Monad.List
+import "mtl" Control.Monad.List
 import Data.Array.Unboxed
 import Data.Array.ST
 import Data.Bits
@@ -27,12 +28,8 @@ ksublists k [] = []
 ksublists k (x:xs) = map (x:) (ksublists (k-1) xs) ++ ksublists k xs
 
 -- how many ones in the binary expansion
-foreign import ccall unsafe "blength.h blength" c_blength :: CUInt -> CUInt
-blength :: Int16 -> Int16
-blength = fromIntegral . c_blength . fromIntegral 
-{- blength i = helper i 0 where
-	helper 0 s = s
-	helper i s = helper (shift i (-1)) (s+ (i.&.1)) -}
+blength :: Int16 -> Int
+blength = popCount
 
 type Square = (Int,Char)
 
@@ -40,10 +37,10 @@ squares :: [Square]
 squares = cross [1..9] "abcdefghi"
 unitlist :: [[Square]]
 unitlist = rows ++ columns ++ boxes
-	where
-	rows = map (\x -> cross [x] "abcdefghi") [1..9]
-	columns = map (\x -> cross [1..9] [x] ) "abcdefghi"
-	boxes = liftM2 cross [[1..3],[4..6],[7..9]] ["abc","def","ghi"]
+    where
+    rows = map (\x -> cross [x] "abcdefghi") [1..9]
+    columns = map (\x -> cross [1..9] [x] ) "abcdefghi"
+    boxes = liftM2 cross [[1..3],[4..6],[7..9]] ["abc","def","ghi"]
 
 units s = filter (elem s) unitlist
 peers s = filter (/=s) $ nub $ concat $ units s
@@ -54,7 +51,7 @@ peers s = filter (/=s) $ nub $ concat $ units s
 type Mahis = UArray Square Int16
 
 -- Find and eliminate naked subsets with k elements
-kmoukari :: Int16 -> STUArray s Square Int16 -> ST s ()
+kmoukari :: Int -> STUArray s Square Int16 -> ST s ()
 kmoukari k ma = do
     void $ runListT nakedSubsets
     where
@@ -95,27 +92,27 @@ moukari ma = do
 
 mahisParse :: String -> Mahis
 mahisParse string =  array ((1,'a'),(9,'i')) $ do
-	(ln,l) <- zip [1..9] (lines string)
-	True <- return $ l /= ""
-	(a,d) <- zip "abcdefghi" l
-	return ((ln,a), if d `elem` "123456789"
-			        then bit (digitToInt d) else 1022)
+    (ln,l) <- zip [1..9] (lines string)
+    True <- return $ l /= ""
+    (a,d) <- zip "abcdefghi" l
+    return ((ln,a), if d `elem` "123456789"
+                    then bit (digitToInt d) else 1022)
 
 mahisRender :: Mahis -> String
 mahisRender m = do 
-	s <- squares
-	let p = m!s
-	    pj = filter (testBit p) [1..9]
-	    str [k] = show k
-	    str _   = show 0
-	str pj ++ (if snd s == 'i' then "\n" else "")
+    s <- squares
+    let p = m!s
+        pj = filter (testBit p) [1..9]
+        str [k] = show k
+        str _   = show 0
+    str pj ++ (if snd s == 'i' then "\n" else "")
 
-smahisSum :: STUArray s Square Int16 -> ST s Int16
+smahisSum :: STUArray s Square Int16 -> ST s Int
 smahisSum ma = do
     es <- getElems ma
     return $ sum [ blength x | x <- es ]
 
-mahisSum :: Mahis -> Int16
+mahisSum :: Mahis -> Int
 mahisSum = sum . map blength . elems
 
 mahisNotRR   :: Mahis -> Bool
