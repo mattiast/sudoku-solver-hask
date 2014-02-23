@@ -19,6 +19,7 @@ Executable mysudoku
     base                      >= 4     && < 5,
     array -any,
     containers -any,
+    vector -any,
     mtl                       >= 2     && < 3
 
   if impl(ghc >= 6.12.0)

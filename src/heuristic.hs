@@ -4,17 +4,16 @@ import Data.Tree
 import Data.Bits
 import Data.List
 import Control.Arrow
-import Data.Array.Unboxed
+import qualified Data.Vector.Unboxed as V
 
 generateTree :: Mahis -> Tree Mahis
 generateTree = unfoldTree ((id &&& guesses) . mahisSaturate) where
     guesses m 
         | mahisSum m == 81 = []
         | not (mahisNotRR m) = []
-        | otherwise = let (sq,_) = minimumBy (\x y -> compare (snd x) (snd y)) $ 
-                                           filter ((/=1) . snd) $ map (id *** blength) $ assocs m
-                          mahikset = [ bit i | i <- [1..9], testBit (m!sq) i ]
-                      in [ m // [(sq, v)] | v <- mahikset ]
+        | otherwise = let (_,sq) = V.minimum $ V.filter ((>1) . fst) $ V.map (blength *** id) $ V.zip m (V.enumFromN 0 81)
+                          mahikset = [ bit i | i <- [1..9], testBit (m V.! sq) i ]
+                      in [ m V.// [(sq, v)] | v <- mahikset ]
 
 treeSize (Node _ sf) = 1 + sum (map treeSize sf)
 treeDepth (Node _ sf) = 1 + foldl' max 0 (map treeDepth sf)

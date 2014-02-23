@@ -4,8 +4,8 @@ import Data.Char
 import Control.Monad
 import Control.Monad.ST
 import "mtl" Control.Monad.List
-import Data.Array.Unboxed
-import Data.Array.ST
+import qualified Data.Vector.Unboxed as V
+import qualified Data.Vector.Unboxed.Mutable as VM
 import Data.Bits
 import Data.Int(Int16)
 import Data.List
@@ -22,6 +22,7 @@ sublists []     = [[]]
 sublists (x:xs) = map (x:) (sublists xs) ++ sublists xs
 
 -- Subsets with k elements
+ksublists :: Int -> [a] -> [[a]]
 ksublists 0 _ = [[]]
 ksublists k [] = []
 ksublists k (x:xs) = map (x:) (ksublists (k-1) xs) ++ ksublists k xs
@@ -45,10 +46,10 @@ unitlist = map (map squareNumber) $ rows ++ columns ++ boxes
 -- Every square has a set of possible numbers
 -- encoded in the bits 1..9
 -- Other bits are zero.
-type Mahis = UArray Square Int16
+type Mahis = V.Vector Int16
 
 -- Find and eliminate naked subsets with k elements
-kmoukari :: Int -> STUArray s Square Int16 -> ST s ()
+kmoukari :: Int -> VM.STVector s Int16 -> ST s ()
 kmoukari k ma = do
     void $ runListT nakedSubsets
     where
@@ -56,7 +57,7 @@ kmoukari k ma = do
     nakedSubsets = do
         unit <- ListT (return unitlist)
         sub <- ListT . return $ ksublists k unit
-        ls <- lift $ mapM (readArray ma) sub
+        ls <- lift $ mapM (VM.read ma) sub
         -- By definition, a subset of size k is naked if there are exactly
         -- k bits that appear in those squares.
         let bits = foldl1' (.|.) ls
@@ -64,16 +65,16 @@ kmoukari k ma = do
         lift $ eliminate ma (unit, sub, bits)
     -- Given a naked subset, remove their bits from all remaining squares
     -- in the same unit.
-    eliminate :: STUArray s Square Int16 -> ([Square],[Square],Int16) -> ST s ()
+    eliminate :: VM.STVector s Int16 -> ([Square],[Square],Int16) -> ST s ()
     eliminate ma (unit, naked, bits) = {-# SCC "eliminate" #-}
                    sequence_ [ upd sq ma (.&. complement bits) | sq <- unit \\ naked ]
-    upd sq m f = do v <- readArray m sq
-                    writeArray m sq (f v)
+    upd sq m f = do v <- VM.read m sq
+                    VM.write m sq (f v)
 
 -- Try to use kmoukari for different values of k. If it makes any progress,
 -- start over from the beginning. If none of the k's gives any progress,
 -- stop.
-moukari :: STUArray s Square Int16 -> ST s ()
+moukari :: VM.STVector s Int16 -> ST s ()
 moukari ma = do
     s_old <- smahisSum ma
     let try (k:ks) = do
@@ -88,7 +89,7 @@ moukari ma = do
     when progress (moukari ma)
 
 mahisParse :: String -> Mahis
-mahisParse string =  listArray (0,80) $ map bitti $ concat $ lines string where
+mahisParse string =  V.fromListN 81 $ map bitti $ concat $ lines string where
     bitti d = if d `elem` "123456789"
                   then bit (digitToInt d) 
                   else 1022
@@ -96,25 +97,25 @@ mahisParse string =  listArray (0,80) $ map bitti $ concat $ lines string where
 mahisRender :: Mahis -> String
 mahisRender m = do 
     s <- squares
-    let p = m!s
+    let p = m V.! s
         pj = filter (testBit p) [1..9]
         str [k] = show k
-        str _   = show 0
+        str _   = "0"
     str pj ++ (if mod s 9 == 8 then "\n" else "")
 
-smahisSum :: STUArray s Square Int16 -> ST s Int
+smahisSum :: VM.STVector s Int16 -> ST s Int
 smahisSum ma = do
-    es <- getElems ma
+    es <- mapM (VM.read ma) [0..80]
     return $ sum [ blength x | x <- es ]
 
 mahisSum :: Mahis -> Int
-mahisSum = sum . map blength . elems
+mahisSum = V.sum . V.map blength
 
 mahisNotRR   :: Mahis -> Bool
-mahisNotRR m = all (/= 0) (elems m)
+mahisNotRR m = V.all (/= 0) m
 
 mahisSaturate :: Mahis -> Mahis
-mahisSaturate mah = runSTUArray $ do
-    ma <- thaw mah
+mahisSaturate mah = V.create $ do
+    ma <- V.thaw mah
     moukari ma
     return ma
