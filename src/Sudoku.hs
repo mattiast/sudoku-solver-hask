@@ -94,6 +94,11 @@ mahisParse string =  V.fromListN 81 $ map bitti $ concat $ lines string where
                   then bit (digitToInt d) 
                   else 1022
 
+mahisParseLineDot :: String -> Mahis
+mahisParseLineDot line = V.fromListN 81 $ map bitti $ line where
+    bitti '.' = 1022
+    bitti d | d >= '1' && d <= '9' = bit (digitToInt d)
+
 mahisRender :: Mahis -> String
 mahisRender m = do 
     s <- squares
