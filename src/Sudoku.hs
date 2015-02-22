@@ -1,5 +1,14 @@
-{-# LANGUAGE PackageImports #-}
-module Sudoku where
+{-# LANGUAGE PackageImports, ScopedTypeVariables #-}
+module Sudoku(
+             Mahis,
+             mahisSum,
+             mahisSaturate,
+             mahisParse,
+             mahisParseLineDot,
+             mahisRender,
+             mahisNotRR,
+             blength
+) where
 import Data.Char
 import Control.Monad
 import Control.Monad.ST
@@ -15,11 +24,6 @@ import Prelude
 cross           :: [a] -> [b] -> [(a,b)]
 cross [] _      = []
 cross (x:xs) ys = map (\z -> (x,z)) ys ++ cross xs ys
-
--- Power set
-sublists        :: [a] -> [[a]]
-sublists []     = [[]]
-sublists (x:xs) = map (x:) (sublists xs) ++ sublists xs
 
 -- Subsets with k elements
 ksublists :: Int -> [a] -> [[a]]
@@ -49,7 +53,7 @@ unitlist = map (map squareNumber) $ rows ++ columns ++ boxes
 type Mahis = V.Vector Int16
 
 -- Find and eliminate naked subsets with k elements
-kmoukari :: Int -> VM.STVector s Int16 -> ST s ()
+kmoukari :: forall s. Int -> VM.STVector s Int16 -> ST s ()
 kmoukari k ma = do
     void $ runListT nakedSubsets
     where
@@ -62,11 +66,11 @@ kmoukari k ma = do
         -- k bits that appear in those squares.
         let bits = foldl1' (.|.) ls
         True <- return $ blength bits == k
-        lift $ eliminate ma (unit, sub, bits)
+        lift $ eliminate (unit, sub, bits)
     -- Given a naked subset, remove their bits from all remaining squares
     -- in the same unit.
-    eliminate :: VM.STVector s Int16 -> ([Square],[Square],Int16) -> ST s ()
-    eliminate ma (unit, naked, bits) = {-# SCC "eliminate" #-}
+    eliminate :: ([Square],[Square],Int16) -> ST s ()
+    eliminate (unit, naked, bits) = {-# SCC "eliminate" #-}
                    sequence_ [ upd sq ma (.&. complement bits) | sq <- unit \\ naked ]
     upd sq m f = do v <- VM.read m sq
                     VM.write m sq (f v)
