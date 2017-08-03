@@ -11,7 +11,7 @@ generateTree = unfoldTree ((id &&& guesses) . mahisSaturate) where
     guesses m 
         | mahisSum m == 81 = []
         | not (mahisNotRR m) = []
-        | otherwise = let (_,sq) = V.minimum $ V.filter ((>1) . fst) $ V.map (blength *** id) $ V.zip m (V.enumFromN 0 81)
+        | otherwise = let (_,sq) = V.minimum $ V.filter ((>1) . fst) $ V.map (first blength) $ V.zip m (V.enumFromN 0 81)
                           mahikset = [ bit i | i <- [1..9], testBit (m V.! sq) i ]
                       in [ m V.// [(sq, v)] | v <- mahikset ]
 

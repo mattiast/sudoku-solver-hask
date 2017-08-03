@@ -28,7 +28,7 @@ cross (x:xs) ys = map (\z -> (x,z)) ys ++ cross xs ys
 -- Subsets with k elements
 ksublists :: Int -> [a] -> [[a]]
 ksublists 0 _ = [[]]
-ksublists k [] = []
+ksublists _ [] = []
 ksublists k (x:xs) = map (x:) (ksublists (k-1) xs) ++ ksublists k xs
 
 -- how many ones in the binary expansion
@@ -54,8 +54,7 @@ type Mahis = V.Vector Int16
 
 -- Find and eliminate naked subsets with k elements
 kmoukari :: forall s. Int -> VM.STVector s Int16 -> ST s ()
-kmoukari k ma = do
-    void $ runListT nakedSubsets
+kmoukari k ma = void $ runListT nakedSubsets
     where
     -- A "naked subset" is a generalization of "naked pair".
     nakedSubsets = do
@@ -84,7 +83,7 @@ moukari ma = do
     let try (k:ks) = do
             kmoukari k ma
             s_new <- smahisSum ma
-            if (s_new < s_old)
+            if s_new < s_old
                 then return True
                 else try ks
         try [] = return False
@@ -98,10 +97,11 @@ mahisParse string =  V.fromListN 81 $ map bitti $ concat $ lines string where
                   then bit (digitToInt d) 
                   else 1022
 
-mahisParseLineDot :: String -> Mahis
-mahisParseLineDot line = V.fromListN 81 $ map bitti $ line where
-    bitti '.' = 1022
-    bitti d | d >= '1' && d <= '9' = bit (digitToInt d)
+mahisParseLineDot :: String -> Maybe Mahis
+mahisParseLineDot line = V.fromListN 81 <$> mapM bitti line where
+    bitti '.' = Just 1022
+    bitti d | d >= '1' && d <= '9' = Just $ bit (digitToInt d)
+    bitti _ = Nothing
 
 mahisRender :: Mahis -> String
 mahisRender m = do 

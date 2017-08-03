@@ -16,4 +16,4 @@ Executable mysudoku
     vector -any,
     mtl                       >= 2     && < 3
 
-  ghc-options: -Wall -fwarn-tabs -funbox-strict-fields -O2
+  ghc-options: -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates -fwarn-tabs -funbox-strict-fields -O2
