@@ -10,14 +10,14 @@ module Sudoku(
              blength
 ) where
 import Data.Char
+import Data.Traversable(for)
 import Control.Monad
 import Control.Monad.ST
-import "mtl" Control.Monad.List
 import qualified Data.Vector.Unboxed as V
 import qualified Data.Vector.Unboxed.Mutable as VM
 import Data.Bits
 import Data.Int(Int16)
-import Data.List
+import Data.List((\\), foldl1')
 import Prelude
 
 -- Cartesian product
@@ -54,18 +54,18 @@ type Mahis = V.Vector Int16
 
 -- Find and eliminate naked subsets with k elements
 kmoukari :: forall s. Int -> VM.STVector s Int16 -> ST s ()
-kmoukari k ma = void $ runListT nakedSubsets
+kmoukari k ma = void $ nakedSubsets
     where
     -- A "naked subset" is a generalization of "naked pair".
-    nakedSubsets = do
-        unit <- ListT (return unitlist)
-        sub <- ListT . return $ ksublists k unit
-        ls <- lift $ mapM (VM.read ma) sub
-        -- By definition, a subset of size k is naked if there are exactly
-        -- k bits that appear in those squares.
-        let bits = foldl1' (.|.) ls
-        True <- return $ blength bits == k
-        lift $ eliminate (unit, sub, bits)
+    nakedSubsets :: (ST s) [[()]]
+    nakedSubsets = for unitlist $ \unit -> do
+                       for (ksublists k unit) $ \sub -> do
+                           ls <- mapM (VM.read ma) sub
+                           -- By definition, a subset of size k is naked if there are exactly
+                           -- k bits that appear in those squares.
+                           let bits = foldl1' (.|.) ls
+                           when (blength bits == k) $
+                               eliminate (unit, sub, bits)
     -- Given a naked subset, remove their bits from all remaining squares
     -- in the same unit.
     eliminate :: ([Square],[Square],Int16) -> ST s ()
