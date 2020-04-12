@@ -10,7 +10,7 @@ module Sudoku(
              blength
 ) where
 import Data.Char
-import Data.Traversable(for)
+import Data.Foldable(for_)
 import Control.Monad
 import Control.Monad.ST
 import qualified Data.Vector.Unboxed as V
@@ -54,12 +54,12 @@ type Mahis = V.Vector Int16
 
 -- Find and eliminate naked subsets with k elements
 kmoukari :: forall s. Int -> VM.STVector s Int16 -> ST s ()
-kmoukari k ma = void $ nakedSubsets
+kmoukari k ma = nakedSubsets
     where
     -- A "naked subset" is a generalization of "naked pair".
-    nakedSubsets :: (ST s) [[()]]
-    nakedSubsets = for unitlist $ \unit -> do
-                       for (ksublists k unit) $ \sub -> do
+    nakedSubsets :: ST s ()
+    nakedSubsets = for_ unitlist $ \unit -> do
+                       for_ (ksublists k unit) $ \sub -> do
                            ls <- mapM (VM.read ma) sub
                            -- By definition, a subset of size k is naked if there are exactly
                            -- k bits that appear in those squares.
