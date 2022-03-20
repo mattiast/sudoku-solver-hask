@@ -1,4 +1,4 @@
-{-# LANGUAGE PackageImports, ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections, ScopedTypeVariables #-}
 module Sudoku(
              Mahis,
              mahisSum,
@@ -23,7 +23,7 @@ import Prelude
 -- Cartesian product
 cross           :: [a] -> [b] -> [(a,b)]
 cross [] _      = []
-cross (x:xs) ys = map (\z -> (x,z)) ys ++ cross xs ys
+cross (x:xs) ys = map (x,) ys ++ cross xs ys
 
 -- Subsets with k elements
 ksublists :: Int -> [a] -> [[a]]
@@ -37,7 +37,7 @@ blength = popCount
 
 type Square = Int
 
-squares :: [Square] 
+squares :: [Square]
 squares = [0..80]
 unitlist :: [[Square]]
 unitlist = map (map squareNumber) $ rows ++ columns ++ boxes
@@ -54,18 +54,16 @@ type Mahis = V.Vector Int16
 
 -- Find and eliminate naked subsets with k elements
 kmoukari :: forall s. Int -> VM.STVector s Int16 -> ST s ()
-kmoukari k ma = nakedSubsets
+kmoukari k ma = for_ unitlist $ \unit -> do
+                   for_ (ksublists k unit) $ \sub -> do
+                       ls <- mapM (VM.read ma) sub
+                       -- A "naked subset" is a generalization of "naked pair".
+                       -- By definition, a subset of size k is naked if there are exactly
+                       -- k bits that appear in those squares.
+                       let bits = foldl1' (.|.) ls
+                       when (blength bits == k) $
+                           eliminate (unit, sub, bits)
     where
-    -- A "naked subset" is a generalization of "naked pair".
-    nakedSubsets :: ST s ()
-    nakedSubsets = for_ unitlist $ \unit -> do
-                       for_ (ksublists k unit) $ \sub -> do
-                           ls <- mapM (VM.read ma) sub
-                           -- By definition, a subset of size k is naked if there are exactly
-                           -- k bits that appear in those squares.
-                           let bits = foldl1' (.|.) ls
-                           when (blength bits == k) $
-                               eliminate (unit, sub, bits)
     -- Given a naked subset, remove their bits from all remaining squares
     -- in the same unit.
     eliminate :: ([Square],[Square],Int16) -> ST s ()
@@ -94,7 +92,7 @@ moukari ma = do
 mahisParse :: String -> Mahis
 mahisParse string =  V.fromListN 81 $ map bitti $ concat $ lines string where
     bitti d = if d `elem` "123456789"
-                  then bit (digitToInt d) 
+                  then bit (digitToInt d)
                   else 1022
 
 mahisParseLineDot :: String -> Maybe Mahis
@@ -104,7 +102,7 @@ mahisParseLineDot line = V.fromListN 81 <$> mapM bitti line where
     bitti _ = Nothing
 
 mahisRender :: Mahis -> String
-mahisRender m = do 
+mahisRender m = do
     s <- squares
     let p = m V.! s
         pj = filter (testBit p) [1..9]
@@ -121,7 +119,7 @@ mahisSum :: Mahis -> Int
 mahisSum = V.sum . V.map blength
 
 mahisNotRR   :: Mahis -> Bool
-mahisNotRR m = V.all (/= 0) m
+mahisNotRR = V.all (/= 0)
 
 mahisSaturate :: Mahis -> Mahis
 mahisSaturate mah = V.create $ do
